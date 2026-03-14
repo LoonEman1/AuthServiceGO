@@ -46,10 +46,10 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /api/register", handler.Register)
-	mux.HandleFunc("POST /api/refresh", handler.Refresh)
-	mux.HandleFunc("POST /api/login", handler.Login)
-	mux.HandleFunc("POST /api/logout", handler.Logout)
+	mux.HandleFunc("POST /api/v1/auth/register", handler.Register)
+	mux.HandleFunc("POST /api/v1/auth/refresh", handler.Refresh)
+	mux.HandleFunc("POST /api/v1/auth/login", handler.Login)
+	mux.HandleFunc("POST /api/v1/auth/logout", handler.Logout)
 
 	serverPort := os.Getenv("SERVER_PORT")
 	if serverPort == "" {

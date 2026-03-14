@@ -87,6 +87,11 @@ func (s *AuthService) Login(input models.LoginUserInput) (*models.AuthResponse, 
 		return nil, err
 	}
 
+	err = s.userStore.SaveRefreshToken(user.ID, *refreshToken, time.Now().Add(time.Hour*24*30))
+	if err != nil {
+		return nil, err
+	}
+
 	return models.NewAuthResponse(user, *accessToken, *refreshToken), nil
 }
 

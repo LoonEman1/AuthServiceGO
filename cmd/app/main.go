@@ -6,6 +6,7 @@ import (
 	jwtPckg "AuthService/internal/jwt"
 	"AuthService/internal/queue"
 	"AuthService/internal/service"
+	"context"
 	"log"
 	"net/http"
 	"os"
@@ -38,6 +39,11 @@ func main() {
 
 	emailProducer := queue.NewKafkaProducer([]string{kafkaBrokers}, "email-notifications")
 	defer emailProducer.Close()
+
+	err = emailProducer.EnsureTopicExists(context.Background(), []string{kafkaBrokers}, "email-notifications")
+	if err != nil {
+		log.Printf("Предупреждение по Кафке: %v", err)
+	}
 
 	if err := database.RunMigrations(databaseURL); err != nil {
 		log.Fatalf("Критическая ошибка миграций: %v", err)

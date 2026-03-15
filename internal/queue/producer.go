@@ -42,3 +42,29 @@ func (p *KafkaProducer) SendEmailTask(ctx context.Context, task models.EmailTask
 func (p *KafkaProducer) Close() error {
 	return p.writer.Close()
 }
+
+func (p *KafkaProducer) EnsureTopicExists(ctx context.Context, brokers []string, topic string) error {
+	address := brokers[0]
+	conn, err := kafka.DialContext(ctx, "tcp", address)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	partitions, err := conn.ReadPartitions()
+	if err == nil {
+		for _, p := range partitions {
+			if p.Topic == topic {
+				return nil
+			}
+		}
+	}
+
+	topicConfig := kafka.TopicConfig{
+		Topic:             topic,
+		NumPartitions:     1,
+		ReplicationFactor: 1,
+	}
+
+	return conn.CreateTopics(topicConfig)
+}

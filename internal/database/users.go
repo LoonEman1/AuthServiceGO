@@ -46,7 +46,7 @@ func (u *UserStore) GetUserByIdentifier(identifier string) (*models.User, error)
 	var user models.User
 
 	query := `
-	SELECT id, nickname, email, real_name, birth_date, created_at, updated_at, password_hash
+	SELECT id, nickname, email, real_name, birth_date, created_at, updated_at, password_hash, is_verified
 	FROM users
 	WHERE nickname = $1 OR email = $1
 	LIMIT 1;

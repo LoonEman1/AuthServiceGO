@@ -69,6 +69,27 @@ func (h *Handlers) Refresh(w http.ResponseWriter, r *http.Request) {
 	respondWithJson(w, http.StatusOK, response)
 }
 
+func (h *Handlers) Verify(w http.ResponseWriter, r *http.Request) {
+	var input models.VerifyInput
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Некорректный формат данных")
+		return
+	}
+
+	if err := input.Validate(); err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+	}
+
+	response, err := h.authService.Verify(input)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondWithJson(w, http.StatusOK, response)
+}
+
 func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 	var input models.LoginUserInput
 
@@ -89,6 +110,27 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJson(w, http.StatusOK, response)
+}
+
+func (h *Handlers) GenerateNewEmailCode(w http.ResponseWriter, r *http.Request) {
+	var input models.GenerateNewCodeInput
+
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		respondWithError(w, http.StatusBadRequest, "Некорректный формат данных")
+		return
+	}
+
+	if err := input.Validate(); err != nil {
+		respondWithError(w, http.StatusBadRequest, err.Error())
+	}
+
+	err := h.authService.NewEmailConfirmationCode(input)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) {

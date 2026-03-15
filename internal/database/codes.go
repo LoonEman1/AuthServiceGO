@@ -29,10 +29,10 @@ func (s *CodesStore) SaveVerificationCode(userID int, code string, ttl time.Dura
 	return err
 }
 
-func (s *CodesStore) VerifyAndActivateUser(userID int, inputCode string) (bool, error) {
+func (s *CodesStore) VerifyAndActivateUser(userID int, inputCode string) error {
 	tx, err := s.db.Beginx()
 	if err != nil {
-		return false, errors.New("Ошибка начала транзакции")
+		return errors.New("Ошибка начала транзакции")
 	}
 	defer tx.Rollback()
 
@@ -43,15 +43,15 @@ func (s *CodesStore) VerifyAndActivateUser(userID int, inputCode string) (bool, 
 	WHERE user_id = $1`
 	err = tx.QueryRow(query, userID).Scan(&storedCode, &expiresAt)
 	if err != nil {
-		return false, errors.New("Не найден код в базе данных")
+		return errors.New("Не найден код в базе данных")
 	}
 
 	if storedCode != inputCode {
-		return false, errors.New("Введен неверный код")
+		return errors.New("Введен неверный код")
 	}
 
 	if time.Now().After(expiresAt) {
-		return false, errors.New("Код недействителен")
+		return errors.New("Код недействителен")
 	}
 
 	_, err = tx.Exec(
@@ -60,7 +60,7 @@ func (s *CodesStore) VerifyAndActivateUser(userID int, inputCode string) (bool, 
 	WHERE id = $1
 	`, userID)
 	if err != nil {
-		return false, errors.New("Ошибка активации пользователя")
+		return errors.New("Ошибка активации пользователя")
 	}
 
 	_, err = tx.Exec(`
@@ -68,8 +68,8 @@ func (s *CodesStore) VerifyAndActivateUser(userID int, inputCode string) (bool, 
 	WHERE user_id = $1
 	`, userID)
 	if err != nil {
-		return false, errors.New("Ошибка удаления из бд верификационного кода, после активации пользователя")
+		return errors.New("Ошибка удаления из бд верификационного кода, после активации пользователя")
 	}
 
-	return true, tx.Commit()
+	return tx.Commit()
 }

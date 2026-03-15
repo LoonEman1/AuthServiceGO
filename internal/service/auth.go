@@ -81,6 +81,56 @@ func (s *AuthService) notifyUserCreated(ctx context.Context, user *models.User, 
 
 }
 
+func (s *AuthService) NewEmailConfirmationCode(input models.GenerateNewCodeInput) error {
+
+	user, err := s.userStore.GetUserByMail(input.Email)
+	if err != nil {
+		return errors.New("Пользователь с такой почтой не найден")
+	}
+
+	if user.IsVerified == true {
+		return errors.New("Почта пользователя уже привязана")
+	}
+
+	code, err := utils.GenerateVerificationCode()
+	if err != nil {
+		return err
+	}
+
+	err = s.codesStore.SaveVerificationCode(user.ID, code, 15*time.Minute)
+	if err != nil {
+		return err
+	}
+
+	go s.notifyUserCreated(context.Background(), user, code)
+
+	return err
+}
+
+func (s *AuthService) Verify(input models.VerifyInput) (*models.AuthResponse, error) {
+
+	user, err := s.userStore.GetUserByMail(input.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.codesStore.VerifyAndActivateUser(user.ID, input.Code); err != nil {
+		return nil, err
+	}
+
+	accessToken, refreshToken, err := s.tokenManager.GenerateTokens(user.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.userStore.SaveRefreshToken(user.ID, *refreshToken, time.Now().Add(time.Hour*24*30))
+	if err != nil {
+		return nil, err
+	}
+
+	return models.NewAuthResponse(user, *accessToken, *refreshToken), nil
+}
+
 func (s *AuthService) Refresh(input models.RefreshInput) (*models.AuthResponse, error) {
 
 	user, err := s.userStore.GetUserByRefreshToken(input.RefreshToken)
@@ -105,6 +155,10 @@ func (s *AuthService) Login(input models.LoginUserInput) (*models.AuthResponse, 
 	user, err := s.userStore.GetUserByIdentifier(input.Identifier)
 	if err != nil {
 		return nil, err
+	}
+
+	if user.IsVerified == false {
+		return nil, errors.New("Для входа в аккаунт необходимо подтвердить почту")
 	}
 
 	err = hashPassword.CheckPasswordHash(input.Password, user.PasswordHash)

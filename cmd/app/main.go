@@ -66,6 +66,8 @@ func main() {
 	mux.HandleFunc("POST /api/v1/auth/refresh", handler.Refresh)
 	mux.HandleFunc("POST /api/v1/auth/login", handler.Login)
 	mux.HandleFunc("POST /api/v1/auth/logout", handler.Logout)
+	mux.HandleFunc("POST /api/v1/auth/verify", handler.Verify)
+	mux.HandleFunc("POST /api/v1/auth/verify/resend", handler.GenerateNewEmailCode)
 
 	serverPort := os.Getenv("SERVER_PORT")
 	if serverPort == "" {

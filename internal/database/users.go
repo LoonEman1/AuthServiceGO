@@ -59,6 +59,21 @@ func (u *UserStore) GetUserByIdentifier(identifier string) (*models.User, error)
 	return &user, nil
 }
 
+func (u *UserStore) GetUserByMail(email string) (*models.User, error) {
+	query := `
+	SELECT id, nickname, email, real_name, birth_date, created_at, updated_at, password_hash, is_verified
+	FROM users
+	WHERE email = $1
+	`
+
+	var user models.User
+	err := u.db.QueryRowx(query, email).StructScan(&user)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
 func (u *UserStore) SaveRefreshToken(userID int, token string, expiresAt time.Time) error {
 	query := `
 		INSERT INTO refresh_tokens (user_id, token, expires_at)

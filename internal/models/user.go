@@ -9,6 +9,7 @@ type User struct {
 	ID           int        `json:"id" db:"id"`
 	Nickname     string     `json:"nickname" db:"nickname"`
 	PasswordHash string     `json:"-" db:"password_hash"`
+	IsVerified   bool       `json:"-" db:"is_verified"`
 	Email        string     `json:"email" db:"email"`
 	RealName     *string    `json:"real_name" db:"real_name"`
 	BirthDate    *time.Time `json:"birth_date" db:"birth_date"`

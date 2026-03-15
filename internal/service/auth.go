@@ -5,20 +5,26 @@ import (
 	"AuthService/internal/hashPassword"
 	jwtPckg "AuthService/internal/jwt"
 	"AuthService/internal/models"
+	"AuthService/internal/queue"
+	"AuthService/internal/utils"
+	"context"
 	"errors"
+	"log"
 	"time"
 )
 
 type AuthService struct {
 	userStore    *database.UserStore
 	tokenManager *jwtPckg.TokenManager
+	codesStore   *database.CodesStore
+	producer     *queue.KafkaProducer
 }
 
-func NewAuthService(store *database.UserStore, tokenManager *jwtPckg.TokenManager) *AuthService {
-	return &AuthService{userStore: store, tokenManager: tokenManager}
+func NewAuthService(store *database.UserStore, tokenManager *jwtPckg.TokenManager, codesStore *database.CodesStore, producer *queue.KafkaProducer) *AuthService {
+	return &AuthService{userStore: store, tokenManager: tokenManager, codesStore: codesStore, producer: producer}
 }
 
-func (s *AuthService) Register(input models.RegisterUserInput) (*models.AuthResponse, error) {
+func (s *AuthService) Register(input models.RegisterUserInput) (*models.User, error) {
 	hashedPassword, err := hashPassword.HashPassword(input.Password)
 	if err != nil {
 		return nil, err
@@ -32,23 +38,47 @@ func (s *AuthService) Register(input models.RegisterUserInput) (*models.AuthResp
 		return nil, err
 	}
 
-	accessToken, err := s.tokenManager.NewAccessToken(user.ID)
-
+	code, err := utils.GenerateVerificationCode()
 	if err != nil {
 		return nil, err
 	}
 
-	refreshToken, err := s.tokenManager.NewRefreshToken()
+	err = s.codesStore.SaveVerificationCode(user.ID, code, 15*time.Minute)
 	if err != nil {
 		return nil, err
 	}
 
-	err = s.userStore.SaveRefreshToken(user.ID, refreshToken, time.Now().Add(time.Hour*24*30))
-	if err != nil {
-		return nil, err
+	go s.notifyUserCreated(context.Background(), user, code)
+
+	// accessToken, err := s.tokenManager.NewAccessToken(user.ID)
+
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// refreshToken, err := s.tokenManager.NewRefreshToken()
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// err = s.userStore.SaveRefreshToken(user.ID, refreshToken, time.Now().Add(time.Hour*24*30))
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	return user, nil
+}
+
+func (s *AuthService) notifyUserCreated(ctx context.Context, user *models.User, code string) {
+	task := models.NewEmailTask(user.Email, code, "Registration")
+
+	sendCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	if err := s.producer.SendEmailTask(sendCtx, *task); err != nil {
+		log.Printf("Ошибка отправки email task в кафку для юзера %d: %v", user.ID, err)
 	}
 
-	return models.NewAuthResponse(user, accessToken, refreshToken), nil
 }
 
 func (s *AuthService) Refresh(input models.RefreshInput) (*models.AuthResponse, error) {

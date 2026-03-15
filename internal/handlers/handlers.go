@@ -38,12 +38,12 @@ func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := h.authService.Register(input)
+	user, err := h.authService.Register(input)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Ошибка при регистрации: "+err.Error())
 		return
 	}
-
+	response := models.NewRegisterResponse(user, "Пользователь создан. Для активации аккаунта необходимо подтвердить почту")
 	respondWithJson(w, http.StatusCreated, response)
 }
 

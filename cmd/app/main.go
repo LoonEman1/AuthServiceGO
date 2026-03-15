@@ -4,6 +4,7 @@ import (
 	"AuthService/internal/database"
 	"AuthService/internal/handlers"
 	jwtPckg "AuthService/internal/jwt"
+	"AuthService/internal/queue"
 	"AuthService/internal/service"
 	"log"
 	"net/http"
@@ -30,6 +31,14 @@ func main() {
 
 	defer db.Close()
 
+	kafkaBrokers := os.Getenv("KAFKA_BROKERS")
+	if kafkaBrokers == "" {
+		kafkaBrokers = "localhost:9092"
+	}
+
+	emailProducer := queue.NewKafkaProducer([]string{kafkaBrokers}, "email-notifications")
+	defer emailProducer.Close()
+
 	if err := database.RunMigrations(databaseURL); err != nil {
 		log.Fatalf("Критическая ошибка миграций: %v", err)
 	}
@@ -37,10 +46,11 @@ func main() {
 	log.Println("Успешно подключено к бд")
 
 	userStore := database.NewUserStore(db)
+	codesStore := database.NewCodeStore(db)
 
 	tokenManager := jwtPckg.NewTokenManager(jwtSecret)
 
-	authService := service.NewAuthService(userStore, tokenManager)
+	authService := service.NewAuthService(userStore, tokenManager, codesStore, emailProducer)
 
 	handler := handlers.NewHandler(authService)
 

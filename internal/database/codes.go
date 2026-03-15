@@ -7,15 +7,15 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type Store struct {
+type CodesStore struct {
 	db *sqlx.DB
 }
 
-func NewStore(db *sqlx.DB) *Store {
-	return &Store{db: db}
+func NewCodeStore(db *sqlx.DB) *CodesStore {
+	return &CodesStore{db: db}
 }
 
-func (s *Store) SaveVerificationCode(userID int, code string, ttl time.Duration) error {
+func (s *CodesStore) SaveVerificationCode(userID int, code string, ttl time.Duration) error {
 	query := `
 	INSERT INTO email_verification_codes (user_id, code, expires_at)
 	VALUES ($1, $2, $3)
@@ -29,7 +29,7 @@ func (s *Store) SaveVerificationCode(userID int, code string, ttl time.Duration)
 	return err
 }
 
-func (s *Store) VerifyAndActivateUser(userID int, inputCode string) (bool, error) {
+func (s *CodesStore) VerifyAndActivateUser(userID int, inputCode string) (bool, error) {
 	tx, err := s.db.Beginx()
 	if err != nil {
 		return false, errors.New("Ошибка начала транзакции")

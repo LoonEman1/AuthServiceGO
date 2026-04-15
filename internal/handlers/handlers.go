@@ -1,9 +1,11 @@
 package handlers
 
 import (
+	apperrors "AuthService/internal/errors"
 	"AuthService/internal/models"
 	"AuthService/internal/service"
 	"encoding/json"
+	"errors"
 	"net/http"
 )
 
@@ -105,6 +107,16 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 
 	response, err := h.authService.Login(input)
 	if err != nil {
+		var notVerifiedErr *apperrors.ErrEmailNotVerified
+
+		if errors.As(err, &notVerifiedErr) {
+			response := models.AuthNotVerifyResponse{
+				Email:   notVerifiedErr.Email,
+				Message: notVerifiedErr.Error(),
+			}
+			respondWithJson(w, http.StatusForbidden, response)
+			return
+		}
 		respondWithError(w, http.StatusUnauthorized, err.Error())
 		return
 	}

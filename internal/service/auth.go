@@ -2,6 +2,7 @@ package service
 
 import (
 	"AuthService/internal/database"
+	apperrors "AuthService/internal/errors"
 	"AuthService/internal/hashPassword"
 	jwtPckg "AuthService/internal/jwt"
 	"AuthService/internal/models"
@@ -158,7 +159,7 @@ func (s *AuthService) Login(input models.LoginUserInput) (*models.AuthResponse, 
 	}
 
 	if user.IsVerified == false {
-		return nil, errors.New("Для входа в аккаунт необходимо подтвердить почту")
+		return nil, &apperrors.ErrEmailNotVerified{Email: user.Email}
 	}
 
 	err = hashPassword.CheckPasswordHash(input.Password, user.PasswordHash)

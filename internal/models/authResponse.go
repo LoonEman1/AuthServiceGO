@@ -6,6 +6,11 @@ type AuthResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type AuthNotVerifyResponse struct {
+	Email   string `json:"email"`
+	Message string `json:"error"`
+}
+
 type RegisterResponse struct {
 	Email   string `json:"email"`
 	Message string `json:"message"`
